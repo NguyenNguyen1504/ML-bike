@@ -2,172 +2,175 @@
 
 No jargon. If a word has to be technical, it is explained right there.
 
+*Updated for Stage 2. The Stage 1 version of this story — where the model was not told
+where anyone was going — is in git history.*
+
 ---
 
-## 1. What are we even trying to do?
+## 1. What are we trying to do?
 
 You are standing at a city bike rack. Before you ride, you want to know:
 **how long will this ride take?**
 
-We try to guess that number before the ride happens, using only three easy things:
+We guess that number before the ride starts, using three things you already know:
 
-- what day it is (Monday? Saturday?)
-- what time it is (8 in the morning? 5 in the evening?)
-- what the weather is like (warm? raining?)
-
-That is the whole idea. Guess the ride length from the day, the time, and the sky.
+- **where you are going** — which station you take the bike from, and which one you
+  will leave it at
+- **when** — what day it is, what time it is
+- **the weather** — warm or cold, dry or raining
 
 ## 2. What do we have to work with?
 
 - **Every city bike ride** in Helsinki and Espoo for four summers (April–October, 2022
-  to 2025). About **10 million rides**. Each one tells us when it started and how long
-  it took.
+  to 2025). About **10 million rides**. Each one tells us when it started, which two
+  stations it went between, how long it took, and how far it went.
 - **The weather for every one of those days** — temperature and rain — from the Finnish
   weather service.
 
-We glue the two together by date. Now every ride knows what the weather was that day.
+## 3. The rule we changed
 
-## 3. One rule we gave ourselves
+In Stage 1, we did **not** tell the model where the rider was going. We thought that would
+be cheating. It turns out we had mixed up two different things:
 
-We do **not** tell the model where the rider is going.
+- **How far this exact ride went.** You only know this *after* the ride. Telling the model
+  would be cheating, so it stays secret.
+- **Which route you picked.** You know this *before* you start. Hiding it was like asking
+  "how long does a trip take?" without saying where to.
 
-Why? Because that would be cheating. If you know the start and the end point, you
-basically know the distance, and distance almost tells you the time all by itself. We
-want to find out what the day, time and weather can do **on their own**.
+So now the model knows the route. But it never sees this ride's own distance. Instead it
+learns **how long that route usually is** from older rides — like a map that remembers.
 
-Remember this rule. It explains almost everything that happens later.
+How much did hiding the route cost us? Without it, the model beat "always say 11 minutes"
+by about 1%. With it, it misses the typical ride by under 2 minutes instead of over 5.
 
-## 4. What the notebooks actually do, step by step
+## 4. What the notebook does, step by step
 
 1. **Read** all 28 monthly files — 10.1 million rides.
-2. **Throw away the broken ones.** Rides under 10 seconds or 10 metres are someone
-   pulling a bike out and pushing it straight back. About 9.8 million rides survive —
-   97 out of every 100.
-3. **Look at the data.** A normal ride is about **11 minutes**.
-4. **Look for patterns.** Rides are a bit longer in summer, a bit longer at weekends,
-   a bit shorter when it rains.
-5. **Split by year, like exams.** Learn from 2022 and 2023. Check ourselves on 2024.
-   Keep 2025 locked in a drawer as the final exam, never peeked at until the very end.
-6. **Teach several models** and see which guesses best.
-7. **Open the drawer** and take the final exam once.
+2. **Throw away the broken ones:** bikes pulled out and pushed straight back, plus bikes
+   being moved to the repair workshop (that is maintenance, not a ride). About 9.84
+   million rides survive — 97 out of every 100.
+3. **Look at the data.** A normal ride is about **11 minutes**, but a few forgotten bikes
+   "ride" for days.
+4. **Check our guesses** about what makes a ride slow (section 6 below).
+5. **Learn every route's usual length** from older rides.
+6. **Split by year, like exams.** Learn from 2022 and 2023. Check ourselves on 2024. Keep
+   2025 locked in a drawer as the final exam.
+7. **Teach three models**, next to two "no-brain" guessers for comparison.
+8. **Check whether the differences are real**, not luck (section 7 explains how).
+9. **Open the drawer** and take the final exam once.
 
-There are two notebooks, and they overlap:
+There are two notebooks:
 
-- `ML_bike.ipynb` — the full story, all 11 steps.
-- `ML_bike_stage1/ML_bike_stage1.ipynb` — a shortened copy, steps 1–7 only, which became
-  the appendix of the Stage 1 report.
+- `ML_bike.ipynb` — the Stage 2 story, 14 steps.
+- `ML_bike_stage1/ML_bike_stage1.ipynb` — the Stage 1 version we already handed in. Frozen.
 
-## 5. The one big problem: forgotten bikes
+## 5. Forgotten bikes, and two tricks against them
 
-Most rides are about 11 minutes. But some "rides" last **days**. The longest one in our
-data lasted **194 days**. Nobody cycled for 194 days. Somebody forgot to put the bike
-back.
-
-Here is why that matters so much.
+Most rides are about 11 minutes. The longest "ride" in our data lasted **194 days**.
+Nobody cycled for 194 days. Somebody forgot to put the bike back.
 
 When you teach a model, you tell it how to count its mistakes. The usual way is called
-**squared error**: being wrong by 2 counts as 4, being wrong by 10 counts as 100. Big
-mistakes are punished enormously.
+**squared error**: being wrong by 2 counts as 4, being wrong by 10 counts as 100. Put a
+194-day ride in front of that, and the model twists its whole answer to avoid being hugely
+wrong about one bike:
 
-Now put a 194-day ride in front of it. The model would rather twist its whole answer than
-be hugely wrong about that one bike. And the numbers prove it:
+> **0.3% of the rides cause 99.6% of the pain the model is trying to reduce.**
 
-> **0.3% of the rides cause 99.7% of the pain the model is trying to reduce.**
+We use two tricks against this, and we checked that we need both:
 
-So the model is not really learning about cycling. It is learning about forgotten bikes.
+- **The log trick.** Measure time in "how many times longer" instead of in minutes. A
+  194-day ride becomes "very long" instead of "unimaginably long". That shrinks the
+  forgotten bikes' share of the pain from 99.6% to 9%.
+- **Counting mistakes kindly (Huber).** Big mistakes count gently, so the few forgotten
+  bikes that are left cannot shout over everyone else.
 
-Our fix: **count mistakes more kindly**. Being wrong by 10 counts as 10, not 100. These
-kinder rules are called **Huber** and **absolute error**. The weird rides still exist —
-we did not delete them — they just no longer get to shout over everyone else.
+With only the log trick, the model still guesses ordinary rides about **half a minute too
+long**. Add Huber, and that goes away: on the final exam, **8 more rides out of every 100**
+land within 2 minutes of the real time.
 
-## 6. What came out
+## 6. Our three guesses, checked
 
-How far off each guess is, on average, in minutes (smaller is better):
+Before modelling, we guessed what sets a ride's length. Here is how each guess held up:
 
-| How we guess | How far off |
+| Our guess | What the data says |
 |---|---|
-| Pick a random real ride and say that | 20.9 min |
-| Always say "11 minutes", ignore everything | 14.29 min |
-| Our best model (day + time + weather) | 14.21 min |
-| A fancy model (boosted trees) | 14.24 min |
-| The most flexible guess that is even possible here | 14.25 min |
+| A longer route takes longer | **Yes — and it is almost everything.** Route length does 99.8% of the work. |
+| The time of day matters, because of traffic | **Yes, but only a little, and not because of traffic.** Morning commuters are the *fastest* riders of the whole day. Weekend rides are 4–5% slower. It is about *why* people ride, not about cars. |
+| Bad weather makes riders slower | **No.** In the rain, people ride slightly *faster* and take *shorter* trips. Rain decides *who* rides, not how fast. |
 
-Read that table slowly, because it is the whole result:
+Two fun facts the model found:
+
+- **Doubling the route makes a ride 80% longer, not twice as long.** Long rides go faster —
+  fewer traffic lights per kilometre.
+- **Round trips** — returning the bike where you took it — **take about twice as long** as
+  other rides of the same length. Those are leisure rides, with stops.
+
+## 7. What came out (the final exam, 2025)
+
+"Typical miss" means: for half the rides the guess is closer than this, for half it is
+further off.
+
+| How we guess | Typical miss | Rides within 2 min |
+|---|---|---|
+| Always say "11 minutes" | 5.4 min | 19 out of 100 |
+| Physics: route length ÷ one usual speed (11.5 km/h), no learning | 2.1 min | 48 out of 100 |
+| Model, counting mistakes the usual way (squared) | 2.4 min | 43 out of 100 |
+| **Our model (Huber)** | **1.9 min** | **52 out of 100** |
+| A fancier model (boosted trees) | 1.9 min | 52 out of 100 |
+
+Read it as a ladder:
 
 ```
-random guessing   20.9
-                    |  <-- a huge win, just from saying "about 11 minutes"
-always say 11     14.29
-                    |  <-- a tiny win, from ALL the day/time/weather cleverness
-our best model    14.21
+always say 11 minutes    5.4 min off
+                           |  <-- a huge win, just from knowing the route
+physics, no learning     2.1 min off
+                           |  <-- a small win, from learning speed patterns
+our model                1.9 min off
 ```
 
-Going from random to "always say 11 minutes" saves about **6 and a half minutes**.
-Going from there to our cleverest model saves about **5 more seconds**.
+**How do we know the differences are real, not luck?** We re-ran the comparison 2,000
+times, each time on a reshuffled set of whole days — days, because rides on the same day
+share the same weather. If one model wins on almost every reshuffle, the win is real.
 
-We also tested whether the fancy model was being held back by not being fancy enough. It
-was not. We built the most flexible guesser possible with these three facts — one that
-can memorise any pattern at all — and it did no better.
+## 8. What this means
 
-## 7. What this means
+- **Mostly, ride time = how far you go ÷ about 11.5 km/h.** Arithmetic gets you most of the
+  way.
+- **Learning adds a real but small polish:** about 3.5 more rides out of every 100 land
+  within 2 minutes.
+- **The fancier model is no better than the simple one,** so we keep the simple one. It is
+  easier to explain, and you can read off exactly what it learned.
+- **How you count mistakes matters more than how fancy the model is.**
 
-**Day, time and weather barely tell you anything about how long one particular ride
-takes.**
+Compare that with Stage 1: back then, our best model was *worse* than "always say 11
+minutes" on the final exam. Now it misses by 1.9 minutes instead of 5.4.
 
-They do tell you something real about the *typical* ride: summer rides are longer, rainy
-rides are shorter, weekend rides are longer. Those patterns are genuinely there. They are
-just tiny next to the real question. Two people cycling at the same hour, on the same
-day, in the same weather still differ enormously — because one is going three streets and
-the other is going across the city.
+## 9. What is still weak
 
-And we are the ones who decided not to tell the model where anyone is going (step 3).
-
-**This is an honest result, not a failed project.** The useful thing we can say is not
-"we built a good predictor" — we did not. It is: *here is exactly how much these features
-can possibly be worth, and it is almost nothing.* That is a real finding, and we can prove
-it instead of just claiming it.
-
-## 8. What is weak, wrong, or wasteful
-
-Things we should fix or admit out loud:
-
-1. **Our "winner" won by 2 seconds — and the race was unfair.** We called Huber the best
-   model. The runner-up lost by 0.03 minutes, and it was under-trained: we only let it
-   practise 50 rounds while the winner got 300. We should not claim a winner from that.
-2. **On the final exam our model was worse than "always say 11 minutes"** for a typical
-   ride (off by 5.66 min versus 5.43). We must say this plainly in the report.
-3. **We report two numbers that mean nothing here** (RMSE and R²). Both are built out of
-   squared error, so the forgotten bikes swallow them. R² comes out as 0.00 for every
-   single model, which makes it look like nothing works, for the wrong reason.
-4. **Every run re-reads all 10 million rides** from 28 files. That is about 40 seconds of
-   pure waiting before anything happens, and 3.5 minutes for the whole notebook.
-5. **We only train on 400,000 rides out of 4.9 million** because some models are slow. We
-   never checked whether using more would change anything.
-6. **The two notebooks share their first 7 steps by copy-paste.** The moment someone edits
-   one, they disagree, and the report's appendix stops matching the real work.
-7. **The weather is daily, not hourly.** A day with rain in the morning counts as rainy at
-   5pm, when it may have been sunny. This blurs the one feature we would most expect to
+1. **The weather is daily, not hourly.** A day with rain in the morning counts as rainy at
+   5pm, when it may have been sunny. Hourly weather is the last chance for weather to
    matter.
-8. **Our most flexible guesser ran out of data.** Splitting the rides by all five facts at
-   once left too few rides in each group — only about half of the checking rides landed in
-   a group big enough to trust.
+2. **About 3 rides in every 100 have no route history** — brand-new stations or rare
+   routes — so they get a rougher guess.
+3. **The *average* miss is still about 11.5 minutes,** even though the *typical* miss is 1.9.
+   Forgotten bikes drag the average up, and nobody can predict them. The report has to
+   explain this, or a reader will think the model is bad.
+4. **We only train on 400,000 rides out of 4.9 million.** We never checked whether using
+   more would help.
+5. **Every run re-reads all 10 million rides from 28 files.** That is most of the
+   notebook's 2–3 minutes.
+6. **"Statistically clear" is not the same as "matters".** With 2.5 million rides, even a
+   3-second difference counts as real. The trees and the simple model differ by about
+   that much, and it means nothing in practice.
+7. **Round trips follow different rules,** and we handle them with just one yes/no flag.
 
-## 9. What should change
+## 10. What to do next
 
-In the order worth doing it:
-
-1. **Say the honest result out loud and make it the headline.** "These features are worth
-   about 1% of the achievable improvement, and here is the proof" is a stronger report
-   than a vague claim of success.
-2. **Stop claiming a best model.** Say the kind-loss models are equal, and that we chose
-   Huber because it trains reliably. Fix the under-trained one or drop the comparison.
-3. **Save the cleaned data once** to a single file, and load that instead of re-reading 28
-   files every time. One line of code, and the 40-second wait disappears.
-4. **Use hourly weather instead of daily.** This is the one change that could genuinely
-   improve the predictions, because rain at 5pm is what actually matters.
-5. **Keep RMSE and R² if the course wants them, but write one sentence saying why they are
-   meaningless here.** Otherwise a reader sees R² = 0 and assumes we did something wrong.
-6. **Make the two notebooks share one source** so the appendix cannot drift away from the
-   real analysis.
-7. **Decide what to do about the destination.** Our own rule says leave it out — but we
-   should at least mention what it would be worth, so the reader knows we know.
+1. **Write the Stage 2 report.** Lead with the rule we changed (section 3), then use the
+   "three guesses" check (section 6) as the main evidence.
+2. **Fix the rain sentence.** The Stage 1 report says riders are slower in the rain. The
+   data says the opposite.
+3. **Report the final exam with its error bars,** and say plainly that the fancy model and
+   the simple one tie.
+4. **Optional:** try hourly weather.
+5. **Optional:** save the cleaned data once, so every rerun skips the slow loading step.

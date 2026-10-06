@@ -6,6 +6,110 @@ environment requirements.
 
 ---
 
+## 2026-10-07 — Stage 2: the model now knows the route; three models; notebook rewritten
+
+> This supersedes the "Stage 2 results so far" section of the 2026-10-06 entry. Those
+> numbers were measured without route information.
+
+### The big change: route length is now a feature
+
+Stage 1 left distance out entirely, so the model could not "cheat". That mixed up two
+different things:
+
+- the **recorded distance of the trip itself** is only known after the ride ends — it
+  stays excluded;
+- the **route** (start and end station) is known before the ride, and our own problem
+  statement assumes the rider knows their destination — it is now included.
+
+How route length works:
+
+- It is the median distance ridden on the same station pair in **earlier** data, never
+  the trip's own distance.
+- Training trips are **cross-fitted**: a 2022 trip gets its route length from 2023 trips,
+  and vice versa, so no trip ever sees its own distance.
+- A route needs at least 3 earlier trips. Otherwise it falls back to the departure
+  station's median, then to the overall median.
+- We also added a **round-trip flag** (3.2% of trips return to their starting station).
+- The label is now modelled as **log(duration)**, so every feature acts as a percentage
+  change.
+
+Why: without the route, time and weather captured 1.5% of the achievable improvement.
+With it, the typical error on 2024 drops from 5.30 to 1.86 minutes.
+
+### Models: down to three
+
+| Model | Role |
+|---|---|
+| Linear, squared error | control for the loss comparison |
+| **Linear, Huber** | main model — selected |
+| Boosted trees, absolute error | the non-linear alternative |
+
+Each pair differs in exactly one thing. Two reference rows sit alongside them: a
+**constant median**, and **physics** (route length × one typical pace, no machine
+learning at all).
+
+**Removed:** constant mean, LAD (it was under-trained), boosted trees with squared error,
+and the RMSE and R² metrics.
+
+The selection rule was declared before any results: **lowest validation MAE**. All
+comparisons now come with 95% confidence intervals from a day-block bootstrap, on both
+2024 and 2025.
+
+### Cleaning
+
+- Dropped **1,264 moves to or from workshop and test stations** (`997` Workshop Helsinki,
+  `999` test stations). These are maintenance moves, not rides.
+- Labels are now stored as 64-bit floats; 32-bit labels broke the log/exp round-trip
+  check that scikit-learn runs.
+
+### Notebook
+
+- **`ML_bike.ipynb` was rewritten in place** — 14 sections, executed, outputs saved. A
+  full rerun takes about 2–3 minutes.
+- The previous version (7 models, no route) is still in git, in commit `7cc258f`
+  ("update version n + n"):
+  `git show 7cc258f:ML_bike.ipynb > ML_bike_old.ipynb`
+- An accidentally duplicated cell from the old version is gone.
+- `ML_bike_stage1/` is untouched — it is the submitted Stage 1 appendix.
+
+### Results on the 2025 test season (never used before this run)
+
+| Model | MAE | MedAE | Within 2 min |
+|---|---|---|---|
+| Constant median | 14.89 | 5.43 | 18.6% |
+| Physics (no ML) | 11.95 | 2.14 | 48.0% |
+| Linear, squared error | 11.70 | 2.35 | 43.3% |
+| **Linear, Huber (selected)** | **11.55** | **1.91** | **51.5%** |
+| Boosted trees, absolute error | 11.60 | 1.89 | 51.8% |
+
+Findings:
+
+1. **Route length does almost everything** — 99.8% of the improvement. The physics row
+   alone achieves 61 of the 65 percentage points of improvement in typical error.
+2. **Huber still beats squared error on a log scale:** +6.4 points within 2 minutes on
+   2024, +8.2 on 2025. Squared error predicts ordinary trips about half a minute too long.
+3. **Trees and linear are equal in practice.** Differences of ~3 seconds in MAE or 0.3
+   points within 2 minutes, with the sign flipping between metrics.
+4. **Time matters a little, through trip purpose rather than traffic.** The morning commute
+   is the fastest time of day; weekends are 4–5% slower on the same route.
+5. **Weather does not help.** Rain makes trips slightly *faster and shorter*, not slower.
+
+### What you need to do
+
+- **Stage 2 report:**
+  - explain the reformulation — recorded distance vs route;
+  - use the feature-ablation table (notebook step 11) as the test of our three-factor
+    assumption;
+  - report the 2025 results together with their confidence intervals.
+- **Don't reuse the Stage 1 sentence "a rider is a little slower in the rain".** The data
+  contradicts it.
+- **The `ML_bike.ipynb` in commit "Update 5" is an intermediate run.** The final version
+  has the full interpretation text and a corrected test-set plot: the old per-hour plot
+  wrongly suggested a 1-minute bias. Commit the current file, not that one.
+- `summarize.md` has been rewritten to match these results.
+
+---
+
 ## 2026-10-06 — Stage 2 analysis, repo tidy-up
 
 ### Repo structure
@@ -32,7 +136,7 @@ environment requirements.
   **Only blank lines were added** — no text, code, outputs or execution counts changed.
   Anyone re-exporting the notebook now gets correctly formatted lists.
 
-### Stage 2 results so far
+### Stage 2 results so far — superseded by 2026-10-07 (measured without the route)
 
 Validation = the 2024 season (2,508,945 trips). MAE and MedAE are in minutes.
 
