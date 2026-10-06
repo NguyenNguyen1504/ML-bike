@@ -94,13 +94,37 @@ Findings:
    is the fastest time of day; weekends are 4–5% slower on the same route.
 5. **Weather does not help.** Rain makes trips slightly *faster and shorter*, not slower.
 
+### Stage 2 report
+
+- **The file to submit is `ML_bike_stage2/Stage2_Submission.pdf`.** It contains the
+  4-page report followed by the notebook as the code appendix (32 pages; the appendix
+  does not count toward the limit).
+- `Stage2_Report_Draft.docx` / `.pdf` is the report on its own, kept in case it needs
+  editing.
+- **Hard limit: 4 pages, excluding the appendix.** Anything beyond page 4 is not read or
+  graded. The report currently ends about 60% of the way down page 4, so any edit must
+  keep it there.
+- It follows the course outline and the peer-review rubric
+  (`ML_bike_stage2/PeerReview_assignmentDescription-2-2026_updated.pdf`), with sections
+  1 Introduction, 2 Problem Formulation, 3 Methods, 4 Results, 5 Conclusions, an
+  unnumbered *Use of AI* section, 6 References and 7 Appendix. The introduction ends with
+  the section-by-section overview the rubric asks for (Q1.2).
+- It is anonymous, since grading is by peer review: no names, and "Anonymous" as the
+  author in both the Word and PDF metadata. The notebook was checked for names, emails
+  and user paths, and none were found.
+
+### Notebook: training errors added
+
+- Step 8 has one new cell that scores every predictor on the training sample it was fitted
+  on (rubric Q4.1 asks for training *and* validation errors). No existing result changed.
+- Training errors are lower than validation errors for *every* predictor, including the
+  constant. So the gap reflects the 2024 season being harder, not overfitting.
+
 ### What you need to do
 
-- **Stage 2 report:**
-  - explain the reformulation — recorded distance vs route;
-  - use the feature-ablation table (notebook step 11) as the test of our three-factor
-    assumption;
-  - report the 2025 results together with their confidence intervals.
+- **Check the *Use of AI* section** before submitting. It must describe what the group
+  actually did; edit it if anything is inaccurate.
+- **Deadline: 7 Oct 2026, 23:59.** Late submissions lose 30% of the submission points.
 - **Don't reuse the Stage 1 sentence "a rider is a little slower in the rain".** The data
   contradicts it.
 - **The `ML_bike.ipynb` in commit "Update 5" is an intermediate run.** The final version
