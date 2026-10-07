@@ -113,6 +113,14 @@ Findings:
   author in both the Word and PDF metadata. The notebook was checked for names, emails
   and user paths, and none were found.
 
+- **2026-10-08: report rewritten for readability.**
+  - It now uses plain language, and the Introduction and Methods contain no results.
+  - Results carries the evidence, as four claims in order: route length does most of the
+    work, ML adds a small but real gain, the Huber loss matters, and trees don't help.
+  - A small feature table (Table 3) shows that weather adds nothing.
+  - Same numbers, same notebook, still 4 pages: the report now ends halfway down page 4.
+    `Stage2_Submission.pdf` has been rebuilt.
+
 ### Notebook: training errors added
 
 - Step 8 has one new cell that scores every predictor on the training sample it was fitted
