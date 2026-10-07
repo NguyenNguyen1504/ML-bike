@@ -121,6 +121,23 @@ Findings:
   - Same numbers, same notebook, still 4 pages: the report now ends halfway down page 4.
     `Stage2_Submission.pdf` has been rebuilt.
 
+- **2026-10-08: clarified "within 2 minutes" in the report.** It means the prediction
+  error is at most 2 minutes, not trips that last 2 minutes. The term is defined once in
+  section 3.4 and worded the same way everywhere else, and the table columns are now
+  "Error ≤ 2 min". The report is still 4 pages, and the submission PDF has been rebuilt.
+
+### Notebook rewritten for readability (2026-10-08)
+
+- `ML_bike.ipynb`: all text cells and code comments were rewritten in plain language.
+  Section titles are simpler, comments that only repeated the code were removed, and short
+  comments were added where the code is not obvious: the route-ID trick, the
+  standardised-coefficient conversion, and why the per-trip ratio is used.
+- **No code or results changed, and this was checked mechanically.** With comments
+  stripped, all 22 code cells are token-for-token identical to the previous version. After
+  rerunning, every printed result and table is identical too.
+- `Stage2_Submission.pdf` was rebuilt with the new notebook as the appendix. It is still 4
+  report pages plus 32 appendix pages.
+
 ### Notebook: training errors added
 
 - Step 8 has one new cell that scores every predictor on the training sample it was fitted
